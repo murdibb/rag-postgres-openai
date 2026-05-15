@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 
@@ -44,11 +43,10 @@ async def create_postgres_engine(*, host, username, database, password, sslmode,
             logger.warning("Could not register pgvector data type yet as vector extension has not been CREATEd")
 
     @event.listens_for(engine.sync_engine, "do_connect")
-    def update_password_token(dialect, conn_rec, cargs, cparams):
+    async def update_password_token(dialect, conn_rec, cargs, cparams):
         if token_based_password:
             logger.info("Updating password token for Azure Database for PostgreSQL")
-            loop = asyncio.get_event_loop()
-            cparams["password"] = loop.run_until_complete(get_password_from_azure_credential())
+            cparams["password"] = await get_password_from_azure_credential()
 
     return engine
 
@@ -71,10 +69,10 @@ async def create_postgres_engine_from_args(args, azure_credential=None) -> Async
     if azure_credential is None and args.host.endswith(".database.azure.com"):
         if tenant_id := args.tenant_id:
             logger.info("Authenticating to Azure using Azure Developer CLI Credential for tenant %s", tenant_id)
-            azure_credential = await AzureDeveloperCliCredential(tenant_id=tenant_id, process_timeout=60)
+            azure_credential = AzureDeveloperCliCredential(tenant_id=tenant_id, process_timeout=60)
         else:
             logger.info("Authenticating to Azure using Azure Developer CLI Credential")
-            azure_credential = await AzureDeveloperCliCredential(process_timeout=60)
+            azure_credential = AzureDeveloperCliCredential(process_timeout=60)
 
     return await create_postgres_engine(
         host=args.host,
