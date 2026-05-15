@@ -1,8 +1,7 @@
-import asyncio
 import logging
 import os
 
-from azure.identity import AzureDeveloperCliCredential
+from azure.identity.aio import AzureDeveloperCliCredential
 from pgvector.asyncpg import register_vector
 from sqlalchemy import event
 from sqlalchemy.engine import AdaptedConnection
@@ -44,18 +43,17 @@ async def create_postgres_engine(*, host, username, database, password, sslmode,
             logger.warning("Could not register pgvector data type yet as vector extension has not been CREATEd")
 
     @event.listens_for(engine.sync_engine, "do_connect")
-    def update_password_token(dialect, conn_rec, cargs, cparams):
+    async def update_password_token(dialect, conn_rec, cargs, cparams):
         if token_based_password:
             logger.info("Updating password token for Azure Database for PostgreSQL")
-            loop = asyncio.get_event_loop()
-            cparams["password"] = loop.run_until_complete(get_password_from_azure_credential())
+            cparams["password"] = await get_password_from_azure_credential()
 
     return engine
 
 
 async def create_postgres_engine_from_env(azure_credential=None) -> AsyncEngine:
     if azure_credential is None and os.environ["POSTGRES_HOST"].endswith(".database.azure.com"):
-        azure_credential = get_azure_credential()
+        azure_credential = await get_azure_credential()
 
     return await create_postgres_engine(
         host=os.environ["POSTGRES_HOST"],
