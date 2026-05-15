@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 
-from azure.identity import AzureDeveloperCliCredential
+from azure.identity.aio import AzureDeveloperCliCredential
 from pgvector.asyncpg import register_vector
 from sqlalchemy import event
 from sqlalchemy.engine import AdaptedConnection
@@ -71,10 +71,10 @@ async def create_postgres_engine_from_args(args, azure_credential=None) -> Async
     if azure_credential is None and args.host.endswith(".database.azure.com"):
         if tenant_id := args.tenant_id:
             logger.info("Authenticating to Azure using Azure Developer CLI Credential for tenant %s", tenant_id)
-            azure_credential = AzureDeveloperCliCredential(tenant_id=tenant_id, process_timeout=60)
+            azure_credential = await AzureDeveloperCliCredential(tenant_id=tenant_id, process_timeout=60)
         else:
             logger.info("Authenticating to Azure using Azure Developer CLI Credential")
-            azure_credential = AzureDeveloperCliCredential(process_timeout=60)
+            azure_credential = await AzureDeveloperCliCredential(process_timeout=60)
 
     return await create_postgres_engine(
         host=args.host,
